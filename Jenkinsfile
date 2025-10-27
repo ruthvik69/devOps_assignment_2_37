@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CRED = 'docker-hub-cred-id'
+        DOCKERHUB_CRED = 'docker-id'
         KUBE_CONFIG = 'kubeconfig-id'
-        IMAGE_NAME = "ruthvik/myapp"
+        IMAGE_NAME = "ruthvikvarma/myapp"
     }
 
     stages {
@@ -43,7 +43,7 @@ pipeline {
                         powershell -Command "(Get-Content k8s\\deployment.yaml) -replace 'image: .*', 'image: ${IMAGE_NAME}:${env.BUILD_NUMBER}' | Set-Content k8s\\deployment.tmp.yaml"
                         kubectl --kubeconfig=%KUBECONFIG% apply -f k8s\\deployment.tmp.yaml
                         kubectl --kubeconfig=%KUBECONFIG% apply -f k8s\\service.yaml
-                        kubectl --kubeconfig=%KUBECONFIG% rollout status deployment/ticket-app-deployment
+                        kubectl --kubeconfig=%KUBECONFIG% rollout status deployment/myapp-deployment
                     """
                 }
             }
