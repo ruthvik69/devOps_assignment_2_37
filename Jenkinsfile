@@ -13,37 +13,43 @@ pipeline {
                 checkout scm
             }
         }
+
         stage('Build Docker Image') {
             steps {
                 script {
                     def tag = "${IMAGE_NAME}:${env.BUILD_NUMBER}"
                     def latest = "${IMAGE_NAME}:latest"
-                    sh "docker build -t ${tag} -t ${latest} ."
+                    bat "docker build -t ${tag} -t ${latest} ."
                 }
             }
         }
+
         stage('Push Docker Image') {
             steps {
                 withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CRED}", usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                    sh "echo ${PASSWORD} | docker login -u ${USERNAME} --password-stdin"
-                    sh "docker push ${IMAGE_NAME}:${env.BUILD_NUMBER}"
-                    sh "docker push ${IMAGE_NAME}:latest"
+                    bat """
+                        echo ${PASSWORD} | docker login -u ${USERNAME} --password-stdin
+                        docker push ${IMAGE_NAME}:${env.BUILD_NUMBER}
+                        docker push ${IMAGE_NAME}:latest
+                    """
                 }
             }
         }
+
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: "${KUBE_CONFIG}", variable: 'KUBECONFIG')]) {
-                    sh """
-                        sed 's|image: .*|image: ${IMAGE_NAME}:${env.BUILD_NUMBER}|g' k8s/deployment.yaml > k8s/deployment.tmp.yaml
-                        kubectl --kubeconfig=$KUBECONFIG apply -f k8s/deployment.tmp.yaml
-                        kubectl --kubeconfig=$KUBECONFIG apply -f k8s/service.yaml
-                        kubectl --kubeconfig=$KUBECONFIG rollout status deployment/ticket-app-deployment
+                    bat """
+                        powershell -Command "(Get-Content k8s\\deployment.yaml) -replace 'image: .*', 'image: ${IMAGE_NAME}:${env.BUILD_NUMBER}' | Set-Content k8s\\deployment.tmp.yaml"
+                        kubectl --kubeconfig=%KUBECONFIG% apply -f k8s\\deployment.tmp.yaml
+                        kubectl --kubeconfig=%KUBECONFIG% apply -f k8s\\service.yaml
+                        kubectl --kubeconfig=%KUBECONFIG% rollout status deployment/ticket-app-deployment
                     """
                 }
             }
         }
     }
+
     post {
         failure {
             echo "Deployment failed. Please check logs."
