@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKERHUB_CRED = 'docker-id'
         KUBE_CONFIG = 'kubeconfig-id'
-        IMAGE_NAME = "ruthvik/myapp"
+        IMAGE_NAME = "ruthvikvarma/myapp"
     }
 
     stages {
