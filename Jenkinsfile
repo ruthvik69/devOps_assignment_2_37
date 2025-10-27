@@ -1,0 +1,52 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKERHUB_CRED = 'docker-hub-cred-id'
+        KUBE_CONFIG = 'kubeconfig-id'
+        IMAGE_NAME = "ruthvik/myapp"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    def tag = "${IMAGE_NAME}:${env.BUILD_NUMBER}"
+                    def latest = "${IMAGE_NAME}:latest"
+                    sh "docker build -t ${tag} -t ${latest} ."
+                }
+            }
+        }
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CRED}", usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh "echo ${PASSWORD} | docker login -u ${USERNAME} --password-stdin"
+                    sh "docker push ${IMAGE_NAME}:${env.BUILD_NUMBER}"
+                    sh "docker push ${IMAGE_NAME}:latest"
+                }
+            }
+        }
+        stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([file(credentialsId: "${KUBE_CONFIG}", variable: 'KUBECONFIG')]) {
+                    sh """
+                        sed 's|image: .*|image: ${IMAGE_NAME}:${env.BUILD_NUMBER}|g' k8s/deployment.yaml > k8s/deployment.tmp.yaml
+                        kubectl --kubeconfig=$KUBECONFIG apply -f k8s/deployment.tmp.yaml
+                        kubectl --kubeconfig=$KUBECONFIG apply -f k8s/service.yaml
+                        kubectl --kubeconfig=$KUBECONFIG rollout status deployment/ticket-app-deployment
+                    """
+                }
+            }
+        }
+    }
+    post {
+        failure {
+            echo "Deployment failed. Please check logs."
+        }
+    }
+}
