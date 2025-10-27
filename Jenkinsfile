@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CRED = 'docker-hub-cred-id'
+        DOCKERHUB_CRED = 'docker-id'
         KUBE_CONFIG = 'kubeconfig-id'
         IMAGE_NAME = "ruthvik/myapp"
     }
